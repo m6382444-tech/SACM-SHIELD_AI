@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ScamShield AI - Digital Fraud & Scam Detection Engine</title>
+  <meta name="description" content="AI-powered mobile web application to identify fraudulent SMS, WhatsApp traps, fake bank KYC, malicious QR codes, phishing emails, and trace phone scammer telecom GPS locations with Voice AI narration.">
+  <meta name="theme-color" content="#0a0f1d">
+
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Leaflet CSS for GPS Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Top Cyber Header -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="header-brand" data-tab-target="home">
+        <div class="brand-shield-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title" data-i18n="appTitle">ScamShield AI</h1>
+          <span class="brand-badge">PRO SHIELD</span>
+        </div>
+      </div>
+
+      <!-- Header Controls: Voice AI, Language & Demo Models -->
+      <div class="header-actions">
+        <!-- Voice AI Master Toggle & Visualizer -->
+        <div class="voice-ai-widget">
+          <canvas id="audioVisualizerCanvas" width="70" height="24" class="audio-canvas"></canvas>
+          <button id="voiceToggleBtn" class="voice-btn" title="Toggle Voice AI Narrator">
+            <span class="voice-icon">
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              </svg>
+            </span>
+            <span class="voice-label" data-i18n="voiceAiActive">Voice AI</span>
+          </button>
+        </div>
+
+        <!-- Language Selector -->
+        <div class="lang-select-wrapper">
+          <select id="langSelect" class="lang-select" aria-label="Select Language">
+            <option value="en">🇺🇸 EN</option>
+            <option value="hi">🇮🇳 हिन्दी</option>
+            <option value="es">🇪🇸 ES</option>
+            <option value="fr">🇫🇷 FR</option>
+            <option value="ar">🇸🇦 العربية</option>
+            <option value="de">🇩🇪 DE</option>
+          </select>
+        </div>
+
+        <!-- Demo Presets Pill Button -->
+        <button id="openDemoBtn" class="btn btn-pill-demo">
+          <span class="pill-sparkle">✨</span>
+          <span data-i18n="demoPresets">Demo Models</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main App Container -->
+  <main class="app-main">
+
+    <!-- TAB 1: DASHBOARD & RADAR -->
+    <section id="tab-home" class="tab-panel active">
+      <!-- Hero Section -->
+      <div class="hero-banner">
+        <div class="hero-badge" data-i18n="heroBadge">🛡️ AI-POWERED FRAUD INTELLIGENCE</div>
+        <h2 class="hero-title" data-i18n="heroTitle">Verify Before You Trust</h2>
+        <p class="hero-desc" data-i18n="heroDesc">
+          Instantly detect fraudulent SMS, WhatsApp traps, fake bank KYC notices, malicious QR codes, phishing emails, and trace phone scammer telecom GPS locations with Voice AI narration.
+        </p>
+
+        <div class="hero-actions">
+          <button id="heroDemoBtn" class="btn btn-primary btn-glow">
+            <span>✨</span> <span data-i18n="tryDemoBtn">Try Demo Models</span>
+          </button>
+          <button class="btn btn-secondary" data-tab-target="incident">
+            <span>📝</span> <span>Paste Problem</span>
+          </button>
+          <button class="btn btn-secondary" data-tab-target="recovery">
+            <span>🆘</span> <span>Already Scammed?</span>
+          </button>
+          <button class="btn btn-secondary" data-tab-target="helplines">
+            <span>📞</span> <span>Helplines</span>
+          </button>
+          <button class="btn btn-secondary" data-tab-target="phone">
+            <span>📍</span> <span data-i18n="navPhone">Phone & GPS</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Counters -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon icon-shield">🛡️</div>
+          <div class="stat-info">
+            <h3 id="statThreatsBlocked" class="stat-value">489,240</h3>
+            <p class="stat-label" data-i18n="statsBlocked">Threats Analyzed</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon icon-radar">⚡</div>
+          <div class="stat-info">
+            <h3 id="statActiveCampaigns" class="stat-value">142</h3>
+            <p class="stat-label" data-i18n="statsActive">Active Fraud Waves</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon icon-ai">🎯</div>
+          <div class="stat-info">
+            <h3 class="stat-value">99.4%</h3>
+            <p class="stat-label" data-i18n="statsAccuracy">AI Detection Accuracy</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Scan Channels Grid -->
+      <div class="section-container">
+        <h3 class="section-title" data-i18n="quickScanTitle">Quick Verification Tools</h3>
+        <div class="channel-cards-grid">
+          <div class="channel-card highlight-channel" data-tab-target="incident">
+            <div class="channel-card-icon bg-cyan">📝</div>
+            <div class="channel-card-body">
+              <h4>Paste Your Problem</h4>
+              <p>Natural language AI incident solver & risk calculation</p>
+            </div>
+            <span class="card-arrow">→</span>
+          </div>
+
+          <div class="channel-card highlight-channel" data-tab-target="recovery">
+            <div class="channel-card-icon bg-green">🆘</div>
+            <div class="channel-card-body">
+              <h4>Already Scammed?</h4>
+              <p>Step-by-step tutorials & cyber complaint draft generator</p>
+            </div>
+            <span class="card-arrow">→</span>
+          </div>
+
+          <div class="channel-card highlight-channel" data-tab-target="helplines">
+            <div class="channel-card-icon bg-rose">📞</div>
+            <div class="channel-card-body">
+              <h4>Helplines Directory</h4>
+              <p>1-Tap Call & Email official cyber crime portals</p>
+            </div>
+            <span class="card-arrow">→</span>
+          </div>
+
+          <div class="channel-card" data-tab-target="sms">
+            <div class="channel-card-icon bg-blue">💬</div>
+            <div class="channel-card-body">
+              <h4>SMS & Text Alert</h4>
+              <p>Bank KYC, OTP, lottery SMS & delivery smishing</p>
+            </div>
+            <span class="card-arrow">→</span>
+          </div>
+
+          <div class="channel-card" data-tab-target="whatsapp">
+            <div class="channel-card-icon bg-green">📱</div>
+            <div class="channel-card-body">
+              <h4>WhatsApp Fraud</h4>
+              <p>Part-time job traps, forwarded scams & digital arrest</p>
+            </div>
+            <span class="card-arrow">→</span>
+          </div>
+
+          <div class="channel-card" data-tab-target="phone">
+            <div class="channel-card-icon bg-purple">📞</div>
+            <div class="channel-card-body">
+              <h4>Phone & GPS Locator</h4>
+              <p>Reverse caller ID, scam rating & cell tower coordinates</p>
+            </div>
+            <span class="card-arrow">→</span>
+          </div>
+
+          <div class="channel-card" data-tab-target="qr">
+            <div class="channel-card-icon bg-cyan">🔲</div>
+            <div class="channel-card-body">
+              <h4>QR Code & UPI</h4>
+              <p>Quishing detection & "Receive Money" UPI scams</p>
+            </div>
+            <span class="card-arrow">→</span>
+          </div>
+
+          <div class="channel-card" data-tab-target="email">
+            <div class="channel-card-icon bg-amber">✉️</div>
+            <div class="channel-card-body">
+              <h4>Phishing Email</h4>
+              <p>Lookalike domains, fake security & spoofed headers</p>
+            </div>
+            <span class="card-arrow">→</span>
+          </div>
+
+          <div class="channel-card" data-tab-target="image">
+            <div class="channel-card-icon bg-rose">🖼️</div>
+            <div class="channel-card-body">
+              <h4>Image & Fake Receipts</h4>
+              <p>Doctored Paytm/GPay screenshots & courier slips</p>
+            </div>
+            <span class="card-arrow">→</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Threat Radar & Community Reports Ticker -->
+      <div class="section-container">
+        <div class="section-header-flex">
+          <h3 class="section-title" data-i18n="hotspotsTitle">Live Scam Radar & Community Reports</h3>
+          <span class="live-pulse-badge"><span class="pulse-dot"></span> LIVE FEED</span>
+        </div>
+        <div id="liveReportsTicker" class="reports-ticker-list">
+          <!-- Populated dynamically via loadLiveStats() -->
+          <div class="ticker-loading">Loading live scam reports...</div>
+        </div>
+      </div>
+
+      <!-- Emergency Cyber Crime Helplines Banner -->
+      <div class="emergency-helpline-box">
+        <div class="helpline-header">
+          <span class="helpline-icon">🚨</span>
+          <div>
+            <h4>Emergency National Cyber Crime Portals</h4>
+            <p>If you have lost money or compromised credentials, contact immediately:</p>
+          </div>
+        </div>
+        <div class="helpline-grid">
+          <div class="helpline-item">
+            <span class="helpline-country">🇮🇳 India</span>
+            <a href="tel:1930" class="helpline-call-btn">📞 Dial 1930</a>
+            <a href="mailto:cybercrime-incident@mha.gov.in" class="helpline-email-btn">✉️ Email Cyber Cell</a>
+          </div>
+          <div class="helpline-item">
+            <span class="helpline-country">🇺🇸 USA</span>
+            <a href="tel:+18002255324" class="helpline-call-btn">📞 1-800-CALL-FBI</a>
+            <a href="mailto:ic3@fbi.gov" class="helpline-email-btn">✉️ Email IC3.gov</a>
+          </div>
+          <div class="helpline-item">
+            <span class="helpline-country">🇬🇧 UK</span>
+            <a href="tel:+443001232040" class="helpline-call-btn">📞 0300 123 2040</a>
+            <a href="mailto:contact@actionfraud.police.uk" class="helpline-email-btn">✉️ Action Fraud</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: SMS & TEXT VERIFIER -->
+    <section id="tab-sms" class="tab-panel">
+      <div class="panel-header">
+        <div class="panel-icon-badge bg-blue">💬</div>
+        <div>
+          <h2 data-i18n="smsTitle">SMS & Text Message Verifier</h2>
+          <p data-i18n="smsDesc">Paste any suspicious bank notice, courier SMS, or text alert to detect phishing links and urgency traps.</p>
+        </div>
+      </div>
+
+      <div class="card form-card">
+        <form id="smsForm">
+          <div class="form-group">
+            <label for="smsSenderInput">Sender ID / Phone Number (Optional):</label>
+            <input type="text" id="smsSenderInput" class="form-control" placeholder="e.g. VM-SBIBNK or +919876543210" data-i18n-placeholder="senderPlaceholder">
+          </div>
+
+          <div class="form-group">
+            <div class="label-flex">
+              <label for="smsMessageInput">Message Content:</label>
+              <button type="button" class="btn-mic" data-mic-target="smsMessageInput" title="Speak message">
+                <span class="mic-icon">🎙️</span> <span data-i18n="speakBtn">Voice Input</span>
+              </button>
+            </div>
+            <textarea id="smsMessageInput" class="form-control textarea-lg" rows="4" placeholder="Paste suspicious SMS message text here..." data-i18n-placeholder="smsPlaceholder" required></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <span>🛡️</span> <span data-i18n="verifySmsBtn">Scan Message with AI</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 3: WHATSAPP VERIFIER -->
+    <section id="tab-whatsapp" class="tab-panel">
+      <div class="panel-header">
+        <div class="panel-icon-badge bg-green">📱</div>
+        <div>
+          <h2 data-i18n="whatsappTitle">WhatsApp Scam Verifier</h2>
+          <p data-i18n="whatsappDesc">Detect viral lottery scams, fake YouTube task jobs, digital arrest notices, and unknown international recruiters.</p>
+        </div>
+      </div>
+
+      <div class="card form-card">
+        <form id="whatsappForm">
+          <div class="form-group">
+            <label for="waSenderInput">Sender WhatsApp Number:</label>
+            <input type="text" id="waSenderInput" class="form-control" placeholder="e.g. +234 801 234 5678 or +92 300 1234567" data-i18n-placeholder="senderPhonePlaceholder">
+          </div>
+
+          <div class="form-group-checkbox">
+            <label class="checkbox-label">
+              <input type="checkbox" id="waForwardedCheck">
+              <span class="checkbox-custom"></span>
+              <span data-i18n="forwardedToggle">Marked as "Forwarded many times"</span>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <div class="label-flex">
+              <label for="waMessageInput">WhatsApp Chat Message:</label>
+              <button type="button" class="btn-mic" data-mic-target="waMessageInput">
+                <span class="mic-icon">🎙️</span> <span data-i18n="speakBtn">Voice Input</span>
+              </button>
+            </div>
+            <textarea id="waMessageInput" class="form-control textarea-lg" rows="4" placeholder="Paste WhatsApp message text here..." data-i18n-placeholder="whatsappPlaceholder" required></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <span>🛡️</span> <span data-i18n="verifyWhatsappBtn">Analyze WhatsApp Message</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 4: PHONE NUMBER & GPS CALLER INTELLIGENCE -->
+    <section id="tab-phone" class="tab-panel">
+      <div class="panel-header">
+        <div class="panel-icon-badge bg-purple">📞</div>
+        <div>
+          <h2 data-i18n="phoneTitle">Phone Number Scam Verifier & Caller GPS</h2>
+          <p data-i18n="phoneDesc">Reverse lookup caller identity, carrier operator, scam reputation, and trace exact telecom exchange GPS coordinates on a live map.</p>
+        </div>
+      </div>
+
+      <div class="card form-card">
+        <form id="phoneForm">
+          <div class="form-group">
+            <label for="phoneNumberInput">Phone Number (with Country Code):</label>
+            <div class="input-with-action">
+              <input type="tel" id="phoneNumberInput" class="form-control" placeholder="e.g. +91 98765 43210, +1 415 555 2671, or 1930" data-i18n-placeholder="phonePlaceholder" required>
+              <button type="button" class="btn-mic" data-mic-target="phoneNumberInput">🎙️</button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <span>📍</span> <span data-i18n="verifyPhoneBtn">Trace Number & GPS Location</span>
+          </button>
+        </form>
+
+        <div class="privacy-callout">
+          <span class="callout-icon">ℹ️</span>
+          <p>ScamShield AI resolves the telecom circle, carrier operator, line type (VoIP/Mobile), reported fraud identity, and exact base transceiver station (BTS) cell tower coordinates with street-level address on an interactive map.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: QR CODE & QUISHING VERIFIER -->
+    <section id="tab-qr" class="tab-panel">
+      <div class="panel-header">
+        <div class="panel-icon-badge bg-cyan">🔲</div>
+        <div>
+          <h2 data-i18n="qrTitle">QR Code & Quishing Verifier</h2>
+          <p data-i18n="qrDesc">Scan or upload QR codes to detect malicious links and the dangerous UPI "Receive-Money" payment trap.</p>
+        </div>
+      </div>
+
+      <div class="card form-card">
+        <div class="qr-action-buttons">
+          <input type="file" id="qrFileInput" accept="image/*" style="display:none;">
+          <button type="button" id="qrUploadBtn" class="btn btn-secondary flex-1">
+            <span>📤</span> <span data-i18n="uploadQrBtn">Upload QR Image</span>
+          </button>
+          <button type="button" id="qrCameraBtn" class="btn btn-secondary flex-1">
+            <span>📷</span> <span data-i18n="cameraQrBtn">Scan with Camera</span>
+          </button>
+        </div>
+
+        <!-- Camera Scanner Feed -->
+        <div id="qrCameraContainer" class="camera-stream-container" style="display:none;">
+          <div class="camera-wrapper">
+            <video id="qrVideo"></video>
+            <canvas id="qrCanvas" style="display:none;"></canvas>
+            <div class="scanner-aim-box">
+              <div class="aim-corners"></div>
+              <div class="aim-laser"></div>
+            </div>
+          </div>
+          <button type="button" id="qrStopCameraBtn" class="btn btn-danger btn-sm mt-2">Close Camera</button>
+        </div>
+
+        <div class="divider-text">OR ENTER PAYLOAD MANUALLY</div>
+
+        <form id="qrForm">
+          <div class="form-group">
+            <label for="qrPayloadInput">QR Decoded Payload / URL / UPI String:</label>
+            <textarea id="qrPayloadInput" class="form-control" rows="3" placeholder="e.g. upi://pay?pa=refund@okhdfcbank&am=15000 or https://bit.ly/..." data-i18n-placeholder="qrPayloadPlaceholder" required></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <span>🛡️</span> <span data-i18n="verifyQrBtn">Analyze QR Code</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 6: EMAIL VERIFIER -->
+    <section id="tab-email" class="tab-panel">
+      <div class="panel-header">
+        <div class="panel-icon-badge bg-amber">✉️</div>
+        <div>
+          <h2 data-i18n="emailTitle">Phishing Email Verifier</h2>
+          <p data-i18n="emailDesc">Analyze lookalike sender addresses, brand spoofing, urgent threats, and fake security notices.</p>
+        </div>
+      </div>
+
+      <div class="card form-card">
+        <form id="emailForm">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="emailFromName">Sender Display Name:</label>
+              <input type="text" id="emailFromName" class="form-control" placeholder="e.g. PayPal Security Team" data-i18n-placeholder="fromNamePlaceholder">
+            </div>
+            <div class="form-group flex-1">
+              <label for="emailFromAddress">From Email Address:</label>
+              <input type="email" id="emailFromAddress" class="form-control" placeholder="e.g. service@paypa1-security.top" data-i18n-placeholder="fromEmailPlaceholder" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="emailReplyTo">Reply-To Address (Optional):</label>
+            <input type="text" id="emailReplyTo" class="form-control" placeholder="e.g. hacker-inbox@mail-relay.xyz">
+          </div>
+
+          <div class="form-group">
+            <label for="emailSubject">Subject Line:</label>
+            <input type="text" id="emailSubject" class="form-control" placeholder="e.g. URGENT: Unauthorized Transaction Detected" data-i18n-placeholder="subjectPlaceholder">
+          </div>
+
+          <div class="form-group">
+            <label for="emailAttachment">Attachment Name (Optional):</label>
+            <input type="text" id="emailAttachment" class="form-control" placeholder="e.g. Invoice_Payment.pdf.exe">
+          </div>
+
+          <div class="form-group">
+            <div class="label-flex">
+              <label for="emailBody">Email Body Content:</label>
+              <button type="button" class="btn-mic" data-mic-target="emailBody">🎙️ Voice Input</button>
+            </div>
+            <textarea id="emailBody" class="form-control textarea-lg" rows="4" placeholder="Paste email content here..." data-i18n-placeholder="emailBodyPlaceholder"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <span>🛡️</span> <span data-i18n="verifyEmailBtn">Inspect Email Headers & Body</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 7: IMAGE & SCREENSHOT VERIFIER -->
+    <section id="tab-image" class="tab-panel">
+      <div class="panel-header">
+        <div class="panel-icon-badge bg-rose">🖼️</div>
+        <div>
+          <h2 data-i18n="imageTitle">Image & Screenshot Verifier</h2>
+          <p data-i18n="imageDesc">Upload screenshots of fake Paytm/GPay payment receipts, courier slips, or chat screenshots for OCR analysis.</p>
+        </div>
+      </div>
+
+      <div class="card form-card">
+        <input type="file" id="imageFileInput" accept="image/*" style="display:none;">
+        <div id="imageUploadArea" class="upload-dropzone">
+          <div class="upload-icon">📸</div>
+          <h4 data-i18n="dropImagePrompt">Tap to upload screenshot (JPG, PNG)</h4>
+          <p class="upload-hint">Detects fake payment receipts, doctored fonts, and phishing notices</p>
+        </div>
+
+        <div id="imagePreviewContainer" class="image-preview-box" style="display:none;">
+          <img id="imagePreviewImg" src="" alt="Screenshot Preview">
+        </div>
+
+        <form id="imageForm" class="mt-3">
+          <div class="form-group">
+            <label for="imageOcrText" data-i18n="extractedTextLabel">Extracted OCR Text (editable):</label>
+            <textarea id="imageOcrText" class="form-control" rows="3" placeholder="OCR extracted text will appear here..."></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <span>🛡️</span> <span data-i18n="verifyImageBtn">Analyze Screenshot for Fraud</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 8: PASTE YOUR PROBLEM (AI INCIDENT SOLVER) -->
+    <section id="tab-incident" class="tab-panel">
+      <div class="panel-header">
+        <div class="panel-icon-badge bg-cyan">📝</div>
+        <div>
+          <h2 data-i18n="pasteProblemTitle">Paste Your Problem & Incident Solver</h2>
+          <p data-i18n="pasteProblemDesc">Describe what happened in your own words. Our AI analyzes the incident, calculates exact financial and identity loss risk, and provides immediate recovery tutorials.</p>
+        </div>
+      </div>
+
+      <div class="card form-card">
+        <!-- Sample Problem Scenario Chips -->
+        <div class="scenario-chips-wrapper">
+          <span class="chips-label">Quick Scenario Examples:</span>
+          <div class="chips-container">
+            <button type="button" class="btn-chip" data-sample-problem="I received a WhatsApp video call from a person claiming to be a CBI officer. He said my Aadhaar was linked to a narcotics courier in Mumbai. He threatened me with immediate arrest and made me transfer ₹65,000 via Google Pay to verify my funds. What should I do now?">
+              Digital Arrest Extortion (₹65k)
+            </button>
+            <button type="button" class="btn-chip" data-sample-problem="I got an SMS saying my electricity power would be disconnected at 9:30 PM. I called the officer number given in SMS and he asked me to install AnyDesk on my phone to update the bill. After 5 minutes, ₹38,000 was debited from my SBI account without my consent.">
+              AnyDesk Electricity Bill Scam
+            </button>
+            <button type="button" class="btn-chip" data-sample-problem="A buyer on OLX agreed to buy my sofa. He sent me a QR code on WhatsApp and told me to scan it on PhonePe and enter my UPI PIN to receive the advance payment of ₹12,000. When I entered my PIN, ₹12,000 was deducted from my account instead of being credited!">
+              OLX "Receive Money" QR Trap
+            </button>
+          </div>
+        </div>
+
+        <form id="incidentForm" class="mt-3">
+          <div class="form-group">
+            <div class="label-flex">
+              <label for="incidentStoryInput">Describe Your Problem / Fraud Incident:</label>
+              <button type="button" class="btn-mic" data-mic-target="incidentStoryInput">
+                <span class="mic-icon">🎙️</span> <span data-i18n="speakBtn">Voice Input</span>
+              </button>
+            </div>
+            <textarea id="incidentStoryInput" class="form-control textarea-lg" rows="5" placeholder="Describe your problem here... (e.g. 'I received a WhatsApp call from someone claiming to be CBI police. They said drugs were found in my parcel and made me transfer ₹50,000 via Google Pay...')" data-i18n-placeholder="pasteProblemPlaceholder" required></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <span>⚡</span> <span data-i18n="solveProblemBtn">Analyze Incident & Generate Rescue Plan</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Incident Analysis Results Area -->
+      <div id="incidentResultsArea" class="incident-results-area" style="display:none;">
+        <div class="card incident-summary-card">
+          <div class="incident-header-row">
+            <div>
+              <span class="incident-badge" id="incDetectedCategory">Digital Arrest & Extortion</span>
+              <h3 class="incident-loss-title">Detected Financial Loss: <span id="incDetectedLoss">Rs. 65,000</span></h3>
+            </div>
+            <div class="incident-prob-circle">
+              <span class="prob-num" id="incOverallProb">96.8%</span>
+              <span class="prob-label">Scam Probability</span>
+            </div>
+          </div>
+
+          <!-- Component Probabilities Progress Bars -->
+          <div class="component-probs-container mt-3">
+            <h4 class="component-probs-title" data-i18n="componentProbTitle">Precise Component Risk Probability Breakdown:</h4>
+            
+            <div class="prob-bar-item">
+              <div class="prob-bar-labels">
+                <span>Financial Loss Severity</span>
+                <strong id="probFinancial">96.8%</strong>
+              </div>
+              <div class="prob-bar-track">
+                <div id="fillFinancial" class="prob-bar-fill fill-danger" style="width: 96.8%;"></div>
+              </div>
+            </div>
+
+            <div class="prob-bar-item">
+              <div class="prob-bar-labels">
+                <span>Identity & Credential Theft Risk</span>
+                <strong id="probIdentity">94.2%</strong>
+              </div>
+              <div class="prob-bar-track">
+                <div id="fillIdentity" class="prob-bar-fill fill-danger" style="width: 94.2%;"></div>
+              </div>
+            </div>
+
+            <div class="prob-bar-item">
+              <div class="prob-bar-labels">
+                <span>Device Remote Compromise Risk</span>
+                <strong id="probDevice">88.5%</strong>
+              </div>
+              <div class="prob-bar-track">
+                <div id="fillDevice" class="prob-bar-fill fill-warning" style="width: 88.5%;"></div>
+              </div>
+            </div>
+
+            <div class="prob-bar-item">
+              <div class="prob-bar-labels">
+                <span>Urgency & Psychological Pressure Index</span>
+                <strong id="probUrgency">92.0%</strong>
+              </div>
+              <div class="prob-bar-track">
+                <div id="fillUrgency" class="prob-bar-fill fill-danger" style="width: 92.0%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Extracted Suspects Tag Box -->
+          <div id="incSuspectsBox" class="suspects-box mt-3" style="display:none;">
+            <h4>🔍 Extracted Suspect Intelligence:</h4>
+            <div id="incSuspectsTags" class="suspect-tags"></div>
+          </div>
+        </div>
+
+        <!-- Step-by-Step Recovery Tutorials Roadmap -->
+        <div class="card">
+          <div class="recovery-roadmap-header">
+            <span class="roadmap-icon">🧭</span>
+            <div>
+              <h3>Immediate Recovery Action Plan & Tutorials</h3>
+              <p>Follow these priority steps immediately to protect your funds and device:</p>
+            </div>
+          </div>
+          <div id="incRecoveryTimeline" class="recovery-timeline"></div>
+        </div>
+
+        <!-- 1-Click Launch Complaint Generator -->
+        <div class="card callout-card">
+          <div class="callout-inner">
+            <span class="callout-big-icon">⚖️</span>
+            <div>
+              <h4>Ready to File an Official Police Complaint?</h4>
+              <p>We can automatically pre-fill your formal cyber crime complaint letter using the details you just provided.</p>
+            </div>
+            <button id="btnPreFillComplaint" class="btn btn-primary">Open Complaint Generator →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 9: VICTIM RECOVERY & COMPLAINT GENERATOR -->
+    <section id="tab-recovery" class="tab-panel">
+      <div class="panel-header">
+        <div class="panel-icon-badge bg-green">🆘</div>
+        <div>
+          <h2 data-i18n="alreadyScammedTitle">Already Scammed? Recovery & Complaint Generator</h2>
+          <p data-i18n="alreadyScammedDesc">Follow the Golden Hour bank freeze protocol, sanitize your device, and generate an official legal complaint letter to submit to cyber police.</p>
+        </div>
+      </div>
+
+      <!-- Golden Hour Action Box -->
+      <div class="golden-hour-banner">
+        <div class="golden-badge">⏰ THE CRITICAL "GOLDEN HOUR" (FIRST 2 HOURS)</div>
+        <h3>If money was debited from your account:</h3>
+        <div class="golden-steps-grid">
+          <div class="golden-step">
+            <div class="step-num">1</div>
+            <p><b>Dial 1930 Immediately</b> (National Cyber Crime Helpline). Keep your 12-digit Bank Transaction / UTR number ready.</p>
+          </div>
+          <div class="golden-step">
+            <div class="step-num">2</div>
+            <p><b>Ask for a "Lien / Fraud Freeze"</b> on the scammer beneficiary account so the funds cannot be withdrawn at an ATM.</p>
+          </div>
+          <div class="golden-step">
+            <div class="step-num">3</div>
+            <p><b>Generate & submit your legal complaint</b> to your bank within 3 days to invoke RBI Zero/Limited Liability protection.</p>
+          </div>
+        </div>
+        <div class="golden-action-bar">
+          <a href="tel:1930" class="btn btn-danger btn-call-now">
+            <span>📞</span> Call 1930 Right Now
+          </a>
+          <a href="mailto:cybercrime-incident@mha.gov.in" class="btn btn-secondary">
+            <span>✉️</span> Email Cyber Cell
+          </a>
+        </div>
+      </div>
+
+      <!-- Interactive Complaint Draft Generator Form -->
+      <div class="card form-card mt-3">
+        <div class="form-title-bar">
+          <h3 data-i18n="complaintGenTitle">Official Cyber Crime Complaint Letter Generator</h3>
+          <span class="legal-badge">IT Act Sec 66C/66D & BNS 318</span>
+        </div>
+        <p class="form-subtitle">Fill in your incident details to generate a formatted legal complaint draft for cyber police and bank authorities.</p>
+
+        <form id="complaintForm" class="mt-3">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="compVictimName">Your Full Name:</label>
+              <input type="text" id="compVictimName" class="form-control" placeholder="e.g. Rajesh Kumar" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="compVictimPhone">Your Mobile Number:</label>
+              <input type="tel" id="compVictimPhone" class="form-control" placeholder="+91 98765 43210" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="compVictimEmail">Your Email Address:</label>
+              <input type="email" id="compVictimEmail" class="form-control" placeholder="rajesh@example.com" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="compVictimAddress">City & State / Address:</label>
+              <input type="text" id="compVictimAddress" class="form-control" placeholder="e.g. Andheri East, Mumbai, Maharashtra" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="compBankName">Your Bank Name:</label>
+              <input type="text" id="compBankName" class="form-control" placeholder="e.g. State Bank of India, HDFC Bank">
+            </div>
+            <div class="form-group flex-1">
+              <label for="compAccountMasked">Account Number (Last 4 digits):</label>
+              <input type="text" id="compAccountMasked" class="form-control" placeholder="e.g. XX4102">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="compAmountLost">Defrauded Amount (in Rs / Currency):</label>
+              <input type="text" id="compAmountLost" class="form-control" placeholder="e.g. 50,000" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="compUtrNumber">12-Digit Transaction ID / UTR Number:</label>
+              <input type="text" id="compUtrNumber" class="form-control" placeholder="e.g. 432198765432" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="compScammerPhone">Scammer Phone / WhatsApp Number:</label>
+              <input type="text" id="compScammerPhone" class="form-control" placeholder="e.g. +91 98765 43210">
+            </div>
+            <div class="form-group flex-1">
+              <label for="compScammerUpi">Scammer Beneficiary UPI ID / Account:</label>
+              <input type="text" id="compScammerUpi" class="form-control" placeholder="e.g. scammer99@okhdfcbank">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="compIncidentStory">Incident Summary (How the scam occurred):</label>
+            <textarea id="compIncidentStory" class="form-control textarea-lg" rows="4" placeholder="Explain the conversation, threats, or deceptive instructions given by the scammer..."></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <span>📄</span> <span data-i18n="generateComplaintBtn">Generate Official Complaint Letter</span>
+          </button>
+        </form>
+
+        <!-- Complaint Draft Output Card -->
+        <div id="complaintOutputCard" class="complaint-output-card mt-3" style="display:none;">
+          <div class="output-header">
+            <h4>📄 Formal Cyber Complaint Document Ready</h4>
+            <div class="output-actions">
+              <button type="button" id="btnCopyComplaint" class="btn btn-secondary btn-sm">📋 Copy Letter</button>
+              <a id="btnEmailPolice" href="mailto:cybercrime-incident@mha.gov.in" class="btn btn-primary btn-sm">✉️ Email to Cyber Cell</a>
+              <a href="https://cybercrime.gov.in" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">🌐 Cybercrime.gov.in</a>
+            </div>
+          </div>
+          <pre id="complaintDraftPre" class="complaint-pre"></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 10: NATIONAL & GLOBAL HELPLINES DIRECTORY -->
+    <section id="tab-helplines" class="tab-panel">
+      <div class="panel-header">
+        <div class="panel-icon-badge bg-rose">📞</div>
+        <div>
+          <h2 data-i18n="helplinesTitle">National Cyber Crime Helplines Directory</h2>
+          <p data-i18n="helplinesDesc">Direct contact numbers and complaint email addresses for national law enforcement and financial fraud cells.</p>
+        </div>
+      </div>
+
+      <!-- Helplines List Container (populated via loadHelplinesDirectory()) -->
+      <div id="helplinesDirectoryList" class="helplines-directory-grid">
+        <div class="ticker-loading">Loading national cyber helplines...</div>
+      </div>
+    </section>
+
+    <!-- TAB 11: SCAM IQ INTERACTIVE QUIZ -->
+    <section id="tab-quiz" class="tab-panel">
+      <div class="panel-header">
+        <div class="panel-icon-badge bg-amber">🎓</div>
+        <div>
+          <h2>Scam IQ Simulator</h2>
+          <p>Test your fraud detection skills with real-world scenarios and instant Voice AI feedback.</p>
+        </div>
+      </div>
+
+      <div class="card" id="quizCardContainer">
+        <div class="quiz-header">
+          <span id="quizProgress" class="quiz-step-badge">Question 1 of 5</span>
+          <span class="quiz-badge">Interactive Challenge</span>
+        </div>
+
+        <h3 id="quizScenarioTitle" class="quiz-title">Scenario Title</h3>
+        <div id="quizSenderBadge" class="quiz-sender">Sender: ...</div>
+
+        <div class="quiz-message-card">
+          <p id="quizMessageText">Scenario text goes here...</p>
+        </div>
+
+        <div id="quizActionBtns" class="quiz-options">
+          <button id="quizScamBtn" class="btn btn-danger flex-1">
+            <span>🚨</span> It's a SCAM!
+          </button>
+          <button id="quizSafeBtn" class="btn btn-safe flex-1">
+            <span>✅</span> It's GENUINE
+          </button>
+        </div>
+
+        <div id="quizFeedbackBox" class="quiz-feedback" style="display:none;"></div>
+        <button id="quizNextBtn" class="btn btn-primary btn-block mt-3" style="display:none;">Next Scenario →</button>
+      </div>
+    </section>
+
+    <!-- TAB 12: REPORT A SCAM -->
+    <section id="tab-report" class="tab-panel">
+      <div class="panel-header">
+        <div class="panel-icon-badge bg-rose">📢</div>
+        <div>
+          <h2>Report a Scam to Community Defense</h2>
+          <p>Help protect fellow citizens by submitting fraud numbers, links, or messages to the live threat radar.</p>
+        </div>
+      </div>
+
+      <div class="card form-card">
+        <form id="reportForm">
+          <div class="form-group">
+            <label for="reportType">Target Type:</label>
+            <select id="reportType" class="form-control">
+              <option value="PHONE">Phone Number</option>
+              <option value="SMS">SMS / Message</option>
+              <option value="WHATSAPP">WhatsApp Number / Group</option>
+              <option value="QR">Fraudulent QR Code</option>
+              <option value="EMAIL">Phishing Email Address</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="reportTarget">Target Value (Phone / URL / Email):</label>
+            <input type="text" id="reportTarget" class="form-control" placeholder="+91 98765 43210 or scam-domain.xyz" required>
+          </div>
+
+          <div class="form-group">
+            <label for="reportCategory">Fraud Category:</label>
+            <select id="reportCategory" class="form-control">
+              <option value="Bank KYC Phishing">Bank KYC Phishing</option>
+              <option value="Electricity Disconnection Extortion">Electricity Disconnection Extortion</option>
+              <option value="Part-Time Job / Task Scam">Part-Time Job / Task Scam</option>
+              <option value="Digital Arrest / Police Impersonation">Digital Arrest / Police Impersonation</option>
+              <option value="UPI Refund / Receive QR Drain">UPI Refund / Receive QR Drain</option>
+              <option value="Courier / Parcel Smishing">Courier / Parcel Smishing</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="reportDetails">Incident Details & Evidence:</label>
+            <textarea id="reportDetails" class="form-control" rows="3" placeholder="Describe what the scammer said or demanded..."></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <span>📢</span> Submit to Live Radar
+          </button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Mobile Bottom Navigation Bar (Scrollable for mobile accessibility) -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-tab-target="home">
+      <span class="nav-icon">🛡️</span>
+      <span class="nav-label" data-i18n="navHome">Home</span>
+    </button>
+    <button class="nav-item" data-tab-target="incident">
+      <span class="nav-icon">📝</span>
+      <span class="nav-label">Problem</span>
+    </button>
+    <button class="nav-item" data-tab-target="recovery">
+      <span class="nav-icon">🆘</span>
+      <span class="nav-label">Recovery</span>
+    </button>
+    <button class="nav-item" data-tab-target="helplines">
+      <span class="nav-icon">📞</span>
+      <span class="nav-label">Helplines</span>
+    </button>
+    <button class="nav-item" data-tab-target="phone">
+      <span class="nav-icon">📍</span>
+      <span class="nav-label" data-i18n="navPhone">Phone/GPS</span>
+    </button>
+    <button class="nav-item" data-tab-target="sms">
+      <span class="nav-icon">💬</span>
+      <span class="nav-label" data-i18n="navSms">SMS</span>
+    </button>
+    <button class="nav-item" data-tab-target="whatsapp">
+      <span class="nav-icon">📱</span>
+      <span class="nav-label" data-i18n="navWhatsapp">WhatsApp</span>
+    </button>
+    <button class="nav-item" data-tab-target="qr">
+      <span class="nav-icon">🔲</span>
+      <span class="nav-label" data-i18n="navQr">QR</span>
+    </button>
+    <button class="nav-item" data-tab-target="image">
+      <span class="nav-icon">🖼️</span>
+      <span class="nav-label" data-i18n="navImage">Image</span>
+    </button>
+    <button class="nav-item" data-tab-target="quiz">
+      <span class="nav-icon">🎓</span>
+      <span class="nav-label" data-i18n="navQuiz">Quiz</span>
+    </button>
+  </nav>
+
+  <!-- UNIVERSAL RESULT DRAWER / MODAL -->
+  <div id="resultDrawer" class="result-drawer-overlay">
+    <div class="result-drawer-panel">
+      <!-- Drawer Header -->
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <h3 data-i18n="resultTitle">Verification Analysis Result</h3>
+          <span id="scamCategoryTag" class="category-pill">Bank KYC Phishing</span>
+        </div>
+        <button id="closeResultDrawerBtn" class="btn-close-drawer" aria-label="Close Result">✕</button>
+      </div>
+
+      <!-- Drawer Body -->
+      <div class="drawer-body">
+        <!-- Threat Gauge & Big Badge -->
+        <div class="verdict-hero-card">
+          <div class="threat-badge-row">
+            <span id="threatBadgeDisplay" class="threat-badge badge-danger">HIGH RISK SCAM DETECTED</span>
+          </div>
+
+          <!-- Risk Score Bar -->
+          <div class="risk-gauge-container">
+            <div class="gauge-labels">
+              <span data-i18n="riskScoreLabel">Scam Risk Probability</span>
+              <strong id="riskScoreDisplay">95.4%</strong>
+            </div>
+            <div class="gauge-track">
+              <div id="riskGaugeFill" class="gauge-fill" style="width: 95.4%;"></div>
+            </div>
+          </div>
+
+          <!-- Voice AI Narration Controller Bar -->
+          <div class="narrator-control-bar">
+            <div class="narrator-info">
+              <span class="narrator-icon">🎙️</span>
+              <div>
+                <strong>Voice AI Narrator</strong>
+                <span class="narrator-lang-tag">Multilingual TTS</span>
+              </div>
+            </div>
+            <div class="narrator-actions">
+              <button id="listenVoiceBtn" class="btn btn-sm btn-voice-action">
+                <span>▶</span> <span data-i18n="listenVoiceBtn">Listen with Voice AI</span>
+              </button>
+              <button id="stopVoiceBtn" class="btn btn-sm btn-danger btn-voice-action" style="display:none;">
+                <span>⏹</span> <span data-i18n="stopVoiceBtn">Stop Voice</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Component Probabilities Breakdown Area -->
+        <div id="resComponentProbArea" class="result-detail-card" style="display:none;">
+          <h4 class="card-subtitle" data-i18n="componentProbTitle">Precise Component Risk Probability Breakdown:</h4>
+          <div id="resComponentProbsList" class="component-probs-list"></div>
+        </div>
+
+        <!-- Phone & Caller GPS Intelligence Section -->
+        <div id="phoneResultSection" class="result-detail-card" style="display:none;">
+          <h4 class="card-subtitle">📞 Reverse Caller Identity & Telecom GPS Location</h4>
+          <div class="phone-meta-grid">
+            <div class="meta-box">
+              <span class="meta-label" data-i18n="callerName">Registered / Reported Identity:</span>
+              <strong id="resCallerName" class="meta-value">Reported as: Rahul Sharma (Fake SBI KYC Agent)</strong>
+            </div>
+            <div class="meta-box">
+              <span class="meta-label" data-i18n="carrierName">Carrier Operator:</span>
+              <span id="resCarrier" class="meta-value">Bharti Airtel Ltd</span>
+            </div>
+            <div class="meta-box">
+              <span class="meta-label" data-i18n="lineType">Network Line Type:</span>
+              <span id="resLineType" class="meta-value">Virtual VoIP / Leased PBX</span>
+            </div>
+            <div class="meta-box">
+              <span class="meta-label" data-i18n="telecomCircle">Telecom Circle & Country:</span>
+              <span id="resCircle" class="meta-value">Mumbai Central Circle, Maharashtra, India</span>
+            </div>
+            <div class="meta-box">
+              <span class="meta-label" data-i18n="reportsCount">Community Spam Reports:</span>
+              <span id="resReportsCount" class="meta-value badge-count">3,412 reports</span>
+            </div>
+            <div class="meta-box">
+              <span class="meta-label">GPS Base Station Coordinates:</span>
+              <span id="resGpsCoords" class="meta-value gps-highlight">18.9256° N, 72.8242° E</span>
+            </div>
+          </div>
+
+          <div class="exchange-address-box">
+            <b>Exact Street / Exchange Address:</b> <span id="resExchangeAddress">Colaba-Nariman Point Telecom Node 04, Mumbai</span>
+          </div>
+
+          <!-- Leaflet Map Container -->
+          <div class="map-container-wrapper">
+            <div id="phoneMapContainer" class="phone-map-container"></div>
+          </div>
+          <p class="map-legal-note">GPS pin represents the telecom base transceiver station (BTS) cell tower node / carrier switching facility. Handset-level satellite coordinates are restricted under Telecom & Privacy Laws.</p>
+        </div>
+
+        <!-- QR Code Specific Section -->
+        <div id="qrResultSection" class="result-detail-card" style="display:none;">
+          <h4 class="card-subtitle">🔲 QR Code Payload Inspection</h4>
+          <div id="qrDetailsBox"></div>
+        </div>
+
+        <!-- Red Flags Detected -->
+        <div class="result-detail-card">
+          <h4 class="card-subtitle" data-i18n="redFlagsTitle">Identified Red Flags & Threat Triggers</h4>
+          <div id="redFlagsContainer" class="red-flags-list"></div>
+        </div>
+
+        <!-- Actionable Safety Checklist -->
+        <div class="result-detail-card">
+          <h4 class="card-subtitle" data-i18n="safetyStepsTitle">Recommended Immediate Actions</h4>
+          <ul id="safetyAdviceContainer" class="safety-checklist"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEMO MODELS MODAL -->
+  <div id="demoModal" class="demo-modal-overlay">
+    <div class="demo-modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h3>✨ Instant Demo Models</h3>
+          <p>Select any real-world scenario to test ScamShield AI and Voice AI narration instantly.</p>
+        </div>
+        <button id="closeDemoModalBtn" class="btn-close-modal">✕</button>
+      </div>
+
+      <div id="demoPresetsList" class="demo-presets-grid">
+        <!-- Populated dynamically via loadDemoPresetsList() -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet Map JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Local jsQR library -->
+  <script src="vendor/jsQR.js"></script>
+
+  <!-- Application Scripts -->
+  <script src="js/translations.js"></script>
+  <script src="js/clientEngine.js"></script>
+  <script src="js/voiceAi.js"></script>
+  <script src="js/mapViewer.js"></script>
+  <script src="js/qrScanner.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
