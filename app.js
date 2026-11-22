@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Initialize Subsystems ---
   const voiceAi = new VoiceAiEngine();
   const audioCanvas = document.getElementById('audioVisualizerCanvas');
-  voiceAi.setCanvas(audioCanvas);
+  if (audioCanvas) voiceAi.setCanvas(audioCanvas);
 
   let currentLang = 'en';
   let activeTab = 'home';
@@ -89,6 +89,33 @@ document.addEventListener('DOMContentLoaded', () => {
   // Navigation Links
   const navTabs = document.querySelectorAll('[data-tab-target]');
   const tabPanels = document.querySelectorAll('.tab-panel');
+
+  // --- Unified Safe API Helper (Static Hosting + Backend Resilient) ---
+  async function safeApiCall(url, method = 'GET', data = null) {
+    if (window.ClientEngine && typeof window.ClientEngine.handleApiRoute === 'function') {
+      try {
+        const routeRes = window.ClientEngine.handleApiRoute(url, {
+          method,
+          body: data ? (typeof data === 'string' ? data : JSON.stringify(data)) : null
+        });
+        if (routeRes && routeRes.data) {
+          return routeRes.data;
+        }
+      } catch (err) {
+        console.warn('ClientEngine route handler fallback:', err);
+      }
+    }
+
+    const fetchOptions = {
+      method,
+      headers: { 'Content-Type': 'application/json' }
+    };
+    if (data && method !== 'GET') {
+      fetchOptions.body = typeof data === 'string' ? data : JSON.stringify(data);
+    }
+    const res = await fetch(url, fetchOptions);
+    return await res.json();
+  }
 
   // --- Initialize App ---
   initApp();
@@ -251,7 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
             targetInput.value = transcript;
           }
         }, (status) => {
-          if (status !== 'LISTENING') {
+          if (status === 'ENDED' || status === 'ERROR') {
             btn.classList.remove('mic-active');
           }
         });
@@ -263,30 +290,35 @@ document.addEventListener('DOMContentLoaded', () => {
   function setupDemoPresets() {
     const openModal = () => {
       loadDemoPresetsList();
-      demoModal.classList.add('active');
+      if (demoModal) demoModal.classList.add('active');
     };
 
     const closeModal = () => {
-      demoModal.classList.remove('active');
+      if (demoModal) demoModal.classList.remove('active');
     };
 
     if (openDemoBtn) openDemoBtn.addEventListener('click', openModal);
     if (heroDemoBtn) heroDemoBtn.addEventListener('click', openModal);
     if (closeDemoModalBtn) closeDemoModalBtn.addEventListener('click', closeModal);
 
-    demoModal.addEventListener('click', (e) => {
-      if (e.target === demoModal) closeModal();
-    });
+    if (demoModal) {
+      demoModal.addEventListener('click', (e) => {
+        if (e.target === demoModal) closeModal();
+      });
+    }
   }
 
   async function loadDemoPresetsList() {
     try {
-      const res = await fetch('/api/presets');
-      const data = await res.json();
-      if (!data.success || !data.presets) return;
+      let presets = (window.ClientEngine && window.ClientEngine.PRESETS) || [];
+      if (!presets.length) {
+        const data = await safeApiCall('/api/presets');
+        if (data && data.presets) presets = data.presets;
+      }
+      if (!presets || !presets.length || !demoPresetsList) return;
 
       demoPresetsList.innerHTML = '';
-      data.presets.forEach(preset => {
+      presets.forEach(preset => {
         const card = document.createElement('div');
         card.className = 'demo-preset-card';
         card.innerHTML = `
@@ -300,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         card.querySelector('.btn-load-preset').addEventListener('click', () => {
-          demoModal.classList.remove('active');
+          if (demoModal) demoModal.classList.remove('active');
           runPreset(preset);
         });
 
@@ -312,25 +344,40 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function runPreset(preset) {
+    if (!preset || !preset.category || !preset.data) return;
+
     if (preset.category === 'sms') {
       switchTab('sms');
       document.getElementById('smsSenderInput').value = preset.data.sender || '';
       document.getElementById('smsMessageInput').value = preset.data.message || '';
-      document.getElementById('smsForm').dispatchEvent(new Event('submit'));
+      setTimeout(() => {
+        const form = document.getElementById('smsForm');
+        if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      }, 60);
     } else if (preset.category === 'whatsapp') {
       switchTab('whatsapp');
       document.getElementById('waSenderInput').value = preset.data.sender || '';
       document.getElementById('waMessageInput').value = preset.data.message || '';
-      document.getElementById('waForwardedCheck').checked = preset.data.message.includes('Forwarded');
-      document.getElementById('whatsappForm').dispatchEvent(new Event('submit'));
+      const fwdCheck = document.getElementById('waForwardedCheck');
+      if (fwdCheck) fwdCheck.checked = (preset.data.message || '').includes('Forwarded');
+      setTimeout(() => {
+        const form = document.getElementById('whatsappForm');
+        if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      }, 60);
     } else if (preset.category === 'phone') {
       switchTab('phone');
       document.getElementById('phoneNumberInput').value = preset.data.phoneNumber || '';
-      document.getElementById('phoneForm').dispatchEvent(new Event('submit'));
+      setTimeout(() => {
+        const form = document.getElementById('phoneForm');
+        if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      }, 60);
     } else if (preset.category === 'qr') {
       switchTab('qr');
       document.getElementById('qrPayloadInput').value = preset.data.qrPayload || '';
-      document.getElementById('qrForm').dispatchEvent(new Event('submit'));
+      setTimeout(() => {
+        const form = document.getElementById('qrForm');
+        if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      }, 60);
     } else if (preset.category === 'email') {
       switchTab('email');
       document.getElementById('emailFromName').value = preset.data.fromName || '';
@@ -338,7 +385,10 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('emailReplyTo').value = preset.data.replyTo || '';
       document.getElementById('emailSubject').value = preset.data.subject || '';
       document.getElementById('emailBody').value = preset.data.body || '';
-      document.getElementById('emailForm').dispatchEvent(new Event('submit'));
+      setTimeout(() => {
+        const form = document.getElementById('emailForm');
+        if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      }, 60);
     }
   }
 
@@ -353,16 +403,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const sender = document.getElementById('smsSenderInput').value.trim();
         if (!message) return;
 
-        showLoading();
+        showLoading('Scanning SMS with ScamShield AI...');
         try {
-          const res = await fetch('/api/verify/text', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, sender, channel: 'SMS' })
-          });
-          const result = await res.json();
+          const result = await safeApiCall('/api/verify/text', 'POST', { message, sender, channel: 'SMS' });
           renderResult(result, 'SMS');
         } catch (err) {
+          console.error(err);
           alert('Verification failed. Please try again.');
         } finally {
           hideLoading();
@@ -380,16 +426,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const isForwarded = document.getElementById('waForwardedCheck').checked;
         if (!message) return;
 
-        showLoading();
+        showLoading('Inspecting WhatsApp Threat Indicators...');
         try {
-          const res = await fetch('/api/verify/whatsapp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, sender, isForwarded })
-          });
-          const result = await res.json();
+          const result = await safeApiCall('/api/verify/whatsapp', 'POST', { message, sender, isForwarded });
           renderResult(result, 'WHATSAPP');
         } catch (err) {
+          console.error(err);
           alert('Verification failed. Please try again.');
         } finally {
           hideLoading();
@@ -405,20 +447,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const phoneNumber = document.getElementById('phoneNumberInput').value.trim();
         if (!phoneNumber) return;
 
-        showLoading();
+        showLoading('Querying Telecom BTS Node & Cellular GPS...');
         try {
-          const res = await fetch('/api/verify/phone', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phoneNumber })
-          });
-          const result = await res.json();
+          const result = await safeApiCall('/api/verify/phone', 'POST', { phoneNumber });
           if (result.error) {
             alert(result.error);
             return;
           }
           renderResult(result, 'PHONE');
         } catch (err) {
+          console.error(err);
           alert('Phone lookup failed. Please try again.');
         } finally {
           hideLoading();
@@ -442,44 +480,49 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (!qrScannerManager) {
+        if (!qrScannerManager && typeof QrScannerManager !== 'undefined') {
           qrScannerManager = new QrScannerManager(qrVideo, qrCanvas, (data) => {
             document.getElementById('qrPayloadInput').value = data;
-            qrForm.dispatchEvent(new Event('submit'));
+            qrForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
           });
         }
 
         showLoading('Decoding QR Image...');
-        qrScannerManager.decodeImageFile(file, (err, decodedData) => {
+        if (qrScannerManager) {
+          qrScannerManager.decodeImageFile(file, (err, decodedData) => {
+            hideLoading();
+            if (err) {
+              alert(err.message);
+            } else {
+              document.getElementById('qrPayloadInput').value = decodedData;
+              qrForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            }
+          });
+        } else {
           hideLoading();
-          if (err) {
-            alert(err.message);
-          } else {
-            document.getElementById('qrPayloadInput').value = decodedData;
-            qrForm.dispatchEvent(new Event('submit'));
-          }
-        });
+          alert('QR Scanner library is loading. Please enter payload or retry.');
+        }
       });
     }
 
     if (qrCameraBtn) {
       qrCameraBtn.addEventListener('click', () => {
-        if (!qrScannerManager) {
+        if (!qrScannerManager && typeof QrScannerManager !== 'undefined') {
           qrScannerManager = new QrScannerManager(qrVideo, qrCanvas, (data) => {
-            qrCameraContainer.style.display = 'none';
+            if (qrCameraContainer) qrCameraContainer.style.display = 'none';
             document.getElementById('qrPayloadInput').value = data;
-            qrForm.dispatchEvent(new Event('submit'));
+            qrForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
           });
         }
-        qrCameraContainer.style.display = 'block';
-        qrScannerManager.startCamera();
+        if (qrCameraContainer) qrCameraContainer.style.display = 'block';
+        if (qrScannerManager) qrScannerManager.startCamera();
       });
     }
 
     if (qrStopCameraBtn) {
       qrStopCameraBtn.addEventListener('click', () => {
         if (qrScannerManager) qrScannerManager.stopCamera();
-        qrCameraContainer.style.display = 'none';
+        if (qrCameraContainer) qrCameraContainer.style.display = 'none';
       });
     }
 
@@ -489,16 +532,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const qrPayload = document.getElementById('qrPayloadInput').value.trim();
         if (!qrPayload) return;
 
-        showLoading();
+        showLoading('Analyzing QR Payload & Payment Routing...');
         try {
-          const res = await fetch('/api/verify/qr', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ qrPayload })
-          });
-          const result = await res.json();
+          const result = await safeApiCall('/api/verify/qr', 'POST', { qrPayload });
           renderResult(result, 'QR');
         } catch (err) {
+          console.error(err);
           alert('QR verification failed. Please try again.');
         } finally {
           hideLoading();
@@ -518,16 +557,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const body = document.getElementById('emailBody').value.trim();
         const attachmentName = document.getElementById('emailAttachment').value.trim();
 
-        showLoading();
+        showLoading('Analyzing Phishing Headers & Domain Spoofing...');
         try {
-          const res = await fetch('/api/verify/email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fromName, fromEmail, replyTo, subject, body, attachmentName })
-          });
-          const result = await res.json();
+          const result = await safeApiCall('/api/verify/email', 'POST', { fromName, fromEmail, replyTo, subject, body, attachmentName });
           renderResult(result, 'EMAIL');
         } catch (err) {
+          console.error(err);
           alert('Email verification failed. Please try again.');
         } finally {
           hideLoading();
@@ -555,13 +590,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Preview
         const reader = new FileReader();
         reader.onload = (ev) => {
-          imagePreviewImg.src = ev.target.result;
-          imagePreviewContainer.style.display = 'block';
+          if (imagePreviewImg) imagePreviewImg.src = ev.target.result;
+          if (imagePreviewContainer) imagePreviewContainer.style.display = 'block';
         };
         reader.readAsDataURL(file);
 
         // Pre-fill realistic OCR simulation if client OCR isn't loaded
-        if (!imageOcrText.value) {
+        if (imageOcrText && !imageOcrText.value) {
           imageOcrText.value = `Payment Successful!\nPaid to: SBI Quick Settlement Service\nAmount: Rs. 15,000.00\nStatus: Completed\nNote: Advance for Goods Delivery`;
         }
       });
@@ -570,27 +605,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (imageForm) {
       imageForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const extractedText = imageOcrText.value.trim();
+        const extractedText = imageOcrText ? imageOcrText.value.trim() : '';
         if (!extractedText && !selectedImageFile) {
           alert('Please upload an image or provide text to analyze.');
           return;
         }
 
-        showLoading('Analyzing Image & OCR Data...');
+        showLoading('Analyzing Image & Payment Integrity...');
         try {
-          const formData = new FormData();
-          if (selectedImageFile) {
-            formData.append('imageFile', selectedImageFile);
-          }
-          formData.append('extractedText', extractedText);
-
-          const res = await fetch('/api/verify/image', {
-            method: 'POST',
-            body: formData
+          const filename = selectedImageFile ? selectedImageFile.name : 'screenshot.png';
+          const result = await safeApiCall('/api/verify/image', 'POST', {
+            extractedText: extractedText || `Screenshot file: ${filename}. Analysis of visual payment proof.`,
+            fileMeta: { filename }
           });
-          const result = await res.json();
           renderResult(result, 'IMAGE');
         } catch (err) {
+          console.error(err);
           alert('Image analysis failed. Please try again.');
         } finally {
           hideLoading();
@@ -611,19 +641,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!target || !category) return;
 
         try {
-          const res = await fetch('/api/report', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type, target, category, details })
-          });
-          const data = await res.json();
-          if (data.success) {
+          const data = await safeApiCall('/api/report', 'POST', { type, target, category, details });
+          if (data && data.success) {
             alert('Thank you! Your scam report has been added to the community database.');
             reportForm.reset();
             loadLiveStats();
             switchTab('home');
           }
         } catch (e) {
+          console.error(e);
           alert('Failed to submit report. Please try again.');
         }
       });
@@ -632,7 +658,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Close Result Drawer
     if (closeResultDrawerBtn) {
       closeResultDrawerBtn.addEventListener('click', () => {
-        resultDrawer.classList.remove('active');
+        if (resultDrawer) resultDrawer.classList.remove('active');
         voiceAi.stop();
       });
     }
@@ -640,64 +666,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Render Result Drawer ---
   function renderResult(result, type = 'SMS') {
+    if (!result) return;
     currentResultData = result;
 
     // Reset sections
-    phoneResultSection.style.display = 'none';
-    qrResultSection.style.display = 'none';
+    if (phoneResultSection) phoneResultSection.style.display = 'none';
+    if (qrResultSection) qrResultSection.style.display = 'none';
 
     // 1. Risk Score and Gauge
     const score = result.riskScore || 0;
-    riskScoreDisplay.textContent = `${score}%`;
-    riskGaugeFill.style.width = `${score}%`;
-
-    // Colors
-    if (score >= 75) {
-      riskGaugeFill.style.backgroundColor = '#ef4444'; // critical red
-    } else if (score >= 50) {
-      riskGaugeFill.style.backgroundColor = '#f97316'; // orange
-    } else if (score >= 25) {
-      riskGaugeFill.style.backgroundColor = '#eab308'; // yellow
-    } else {
-      riskGaugeFill.style.backgroundColor = '#10b981'; // green
+    if (riskScoreDisplay) riskScoreDisplay.textContent = `${score}%`;
+    if (riskGaugeFill) {
+      riskGaugeFill.style.width = `${score}%`;
+      if (score >= 75) {
+        riskGaugeFill.style.backgroundColor = '#ef4444'; // critical red
+      } else if (score >= 50) {
+        riskGaugeFill.style.backgroundColor = '#f97316'; // orange
+      } else if (score >= 25) {
+        riskGaugeFill.style.backgroundColor = '#eab308'; // yellow
+      } else {
+        riskGaugeFill.style.backgroundColor = '#10b981'; // green
+      }
     }
 
     // 2. Threat Verdict Badge
-    const dict = (window.TRANSLATIONS && window.TRANSLATIONS[currentLang]) || window.TRANSLATIONS.en;
-    if (result.isScam) {
-      threatBadgeDisplay.className = 'threat-badge badge-danger';
-      threatBadgeDisplay.textContent = dict.threatVerdictScam;
-      voiceAi.playChime('scam');
-    } else if (result.threatLevel === 'MEDIUM') {
-      threatBadgeDisplay.className = 'threat-badge badge-warning';
-      threatBadgeDisplay.textContent = dict.threatVerdictMedium;
-      voiceAi.playChime('scam');
-    } else {
-      threatBadgeDisplay.className = 'threat-badge badge-safe';
-      threatBadgeDisplay.textContent = dict.threatVerdictSafe;
-      voiceAi.playChime('safe');
+    const dict = (window.TRANSLATIONS && window.TRANSLATIONS[currentLang]) || (window.TRANSLATIONS && window.TRANSLATIONS.en) || {};
+    if (threatBadgeDisplay) {
+      if (result.isScam) {
+        threatBadgeDisplay.className = 'threat-badge badge-danger';
+        threatBadgeDisplay.textContent = dict.threatVerdictScam || 'CRITICAL SCAM DETECTED';
+        voiceAi.playChime('scam');
+      } else if (result.threatLevel === 'MEDIUM') {
+        threatBadgeDisplay.className = 'threat-badge badge-warning';
+        threatBadgeDisplay.textContent = dict.threatVerdictMedium || 'SUSPICIOUS INDICATORS';
+        voiceAi.playChime('scam');
+      } else {
+        threatBadgeDisplay.className = 'threat-badge badge-safe';
+        threatBadgeDisplay.textContent = dict.threatVerdictSafe || 'VERIFIED SAFE';
+        voiceAi.playChime('safe');
+      }
     }
 
     // 3. Category Tag
-    scamCategoryTag.textContent = result.scamType || result.spamCategory || result.qrType || 'Phishing Analysis';
+    if (scamCategoryTag) {
+      scamCategoryTag.textContent = result.scamType || result.spamCategory || result.qrType || 'Phishing Analysis';
+    }
 
     // 4. Red Flags List
-    redFlagsContainer.innerHTML = '';
-    if (result.redFlags && result.redFlags.length > 0) {
-      result.redFlags.forEach(flag => {
-        const item = document.createElement('div');
-        item.className = 'red-flag-item';
-        item.innerHTML = `
-          <div class="red-flag-icon">⚠️</div>
-          <div class="red-flag-content">
-            <strong>${flag.title}</strong>
-            <p>${flag.description}</p>
-          </div>
-        `;
-        redFlagsContainer.appendChild(item);
-      });
-    } else {
-      redFlagsContainer.innerHTML = `<div class="safe-note">✓ No malicious indicators or deceptive urgency triggers detected.</div>`;
+    if (redFlagsContainer) {
+      redFlagsContainer.innerHTML = '';
+      if (result.redFlags && result.redFlags.length > 0) {
+        result.redFlags.forEach(flag => {
+          const item = document.createElement('div');
+          item.className = 'red-flag-item';
+          item.innerHTML = `
+            <div class="red-flag-icon">⚠️</div>
+            <div class="red-flag-content">
+              <strong>${flag.title}</strong>
+              <p>${flag.description}</p>
+            </div>
+          `;
+          redFlagsContainer.appendChild(item);
+        });
+      } else {
+        redFlagsContainer.innerHTML = `<div class="safe-note">✓ No malicious indicators or deceptive urgency triggers detected.</div>`;
+      }
     }
 
     // 5. Component Probabilities Breakdown
@@ -720,7 +753,11 @@ document.addEventListener('DOMContentLoaded', () => {
           spamReportProbability: 'Community Fraud Reports Confidence',
           geographicRiskProbability: 'Telecom Circle Risk Weighting',
           linkDeceptionProbability: 'Malicious Link & Domain Deception',
-          credentialHarvestingRisk: 'Credential & OTP Harvesting Hazard'
+          credentialHarvestingRisk: 'Credential & OTP Harvesting Hazard',
+          upiMoneyDrainProbability: 'UPI Payment Drain Risk',
+          recipientImpersonationRisk: 'Payee Impersonation Hazard',
+          senderImpersonationRisk: 'Sender Impersonation Hazard',
+          domainSpoofingProbability: 'Domain Typosquatting Probability'
         };
 
         for (const [key, val] of Object.entries(cp)) {
@@ -746,36 +783,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 6. Safety Advice Checklist
-    safetyAdviceContainer.innerHTML = '';
-    if (result.safetyAdvice && result.safetyAdvice.length > 0) {
-      result.safetyAdvice.forEach(adv => {
-        const item = document.createElement('li');
-        item.textContent = adv;
-        safetyAdviceContainer.appendChild(item);
-      });
+    if (safetyAdviceContainer) {
+      safetyAdviceContainer.innerHTML = '';
+      if (result.safetyAdvice && result.safetyAdvice.length > 0) {
+        result.safetyAdvice.forEach(adv => {
+          const item = document.createElement('li');
+          item.textContent = adv;
+          safetyAdviceContainer.appendChild(item);
+        });
+      }
     }
 
-    // 6. Type Specific Details
-    if (type === 'PHONE' && result.gps) {
+    // 7. Type Specific Details: Phone & GPS
+    if (type === 'PHONE' && result.gps && phoneResultSection) {
       phoneResultSection.style.display = 'block';
-      document.getElementById('resCallerName').textContent = result.name || 'Not Listed';
-      document.getElementById('resCarrier').textContent = result.carrier || 'Unknown Operator';
-      document.getElementById('resLineType').textContent = result.lineType || 'Mobile';
-      document.getElementById('resCircle').textContent = result.telecomCircle || 'National';
-      document.getElementById('resReportsCount').textContent = result.reportsCount || '0';
-      document.getElementById('resGpsCoords').textContent = `${result.gps.lat}° N, ${result.gps.lng}° E`;
-      document.getElementById('resExchangeAddress').textContent = result.gps.address || 'Telecom Base Station';
+      const elCaller = document.getElementById('resCallerName');
+      const elCarrier = document.getElementById('resCarrier');
+      const elLineType = document.getElementById('resLineType');
+      const elCircle = document.getElementById('resCircle');
+      const elReports = document.getElementById('resReportsCount');
+      const elGps = document.getElementById('resGpsCoords');
+      const elAddr = document.getElementById('resExchangeAddress');
+
+      if (elCaller) elCaller.textContent = result.name || 'Not Listed';
+      if (elCarrier) elCarrier.textContent = result.carrier || 'Unknown Operator';
+      if (elLineType) elLineType.textContent = result.lineType || 'Mobile';
+      if (elCircle) elCircle.textContent = result.telecomCircle || 'National';
+      if (elReports) elReports.textContent = result.reportsCount || '0';
+      if (elGps) elGps.textContent = `${result.gps.lat}° N, ${result.gps.lng}° E`;
+      if (elAddr) elAddr.textContent = result.gps.address || 'Telecom Base Station';
 
       // Render Leaflet Map
-      if (!phoneMapViewer) {
+      if (!phoneMapViewer && typeof PhoneMapViewer !== 'undefined') {
         phoneMapViewer = new PhoneMapViewer('phoneMapContainer');
       }
-      setTimeout(() => {
-        phoneMapViewer.renderLocation(result.gps, result.isScam, result.name);
-      }, 150);
+      if (phoneMapViewer) {
+        setTimeout(() => {
+          phoneMapViewer.renderLocation(result.gps, result.isScam, result.name);
+        }, 150);
+      }
     }
 
-    if (type === 'QR' && result.detailedAnalysis) {
+    // 8. Type Specific Details: QR Code
+    if (type === 'QR' && result.detailedAnalysis && qrResultSection) {
       qrResultSection.style.display = 'block';
       const da = result.detailedAnalysis;
       let qrDetailsHtml = '';
@@ -797,21 +847,22 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         `;
       }
-      document.getElementById('qrDetailsBox').innerHTML = qrDetailsHtml;
+      const elBox = document.getElementById('qrDetailsBox');
+      if (elBox) elBox.innerHTML = qrDetailsHtml;
     }
 
     // Open Result Drawer
-    resultDrawer.classList.add('active');
+    if (resultDrawer) resultDrawer.classList.add('active');
 
     // Trigger Voice AI Narration
     if (voiceAi.isAutoNarrateEnabled && !voiceAi.isMuted && result.narratorScripts) {
       const script = result.narratorScripts[currentLang] || result.narratorScripts.en;
       voiceAi.speak(script, () => {
-        listenVoiceBtn.style.display = 'none';
-        stopVoiceBtn.style.display = 'inline-flex';
+        if (listenVoiceBtn) listenVoiceBtn.style.display = 'none';
+        if (stopVoiceBtn) stopVoiceBtn.style.display = 'inline-flex';
       }, () => {
-        listenVoiceBtn.style.display = 'inline-flex';
-        stopVoiceBtn.style.display = 'none';
+        if (listenVoiceBtn) listenVoiceBtn.style.display = 'inline-flex';
+        if (stopVoiceBtn) stopVoiceBtn.style.display = 'none';
       });
     }
   }
@@ -844,33 +895,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderQuizQuestion() {
     const q = QUIZ_QUESTIONS[quizIndex];
-    document.getElementById('quizProgress').textContent = `Question ${quizIndex + 1} of ${QUIZ_QUESTIONS.length}`;
-    document.getElementById('quizScenarioTitle').textContent = q.title;
-    document.getElementById('quizSenderBadge').textContent = `Sender: ${q.sender}`;
-    document.getElementById('quizMessageText').textContent = q.message;
+    if (!q) return;
+    const elProg = document.getElementById('quizProgress');
+    const elTitle = document.getElementById('quizScenarioTitle');
+    const elBadge = document.getElementById('quizSenderBadge');
+    const elMsg = document.getElementById('quizMessageText');
+    const elBtns = document.getElementById('quizActionBtns');
+    const elFeedback = document.getElementById('quizFeedbackBox');
+    const elNext = document.getElementById('quizNextBtn');
 
-    document.getElementById('quizActionBtns').style.display = 'flex';
-    document.getElementById('quizFeedbackBox').style.display = 'none';
-    document.getElementById('quizNextBtn').style.display = 'none';
+    if (elProg) elProg.textContent = `Question ${quizIndex + 1} of ${QUIZ_QUESTIONS.length}`;
+    if (elTitle) elTitle.textContent = q.title;
+    if (elBadge) elBadge.textContent = `Sender: ${q.sender}`;
+    if (elMsg) elMsg.textContent = q.message;
+
+    if (elBtns) elBtns.style.display = 'flex';
+    if (elFeedback) elFeedback.style.display = 'none';
+    if (elNext) elNext.style.display = 'none';
   }
 
   function handleQuizAnswer(userChoice) {
     const q = QUIZ_QUESTIONS[quizIndex];
+    if (!q) return;
     const isCorrect = userChoice === q.correctAnswer;
     if (isCorrect) quizScore++;
 
     const feedbackBox = document.getElementById('quizFeedbackBox');
-    feedbackBox.style.display = 'block';
-    feedbackBox.className = `quiz-feedback ${isCorrect ? 'feedback-correct' : 'feedback-wrong'}`;
-    feedbackBox.innerHTML = `
-      <h4>${isCorrect ? '🎉 Correct Answer!' : '❌ Incorrect!'}</h4>
-      <p>${q.explanation}</p>
-    `;
+    if (feedbackBox) {
+      feedbackBox.style.display = 'block';
+      feedbackBox.className = `quiz-feedback ${isCorrect ? 'feedback-correct' : 'feedback-wrong'}`;
+      feedbackBox.innerHTML = `
+        <h4>${isCorrect ? '🎉 Correct Answer!' : '❌ Incorrect!'}</h4>
+        <p>${q.explanation}</p>
+      `;
+    }
 
-    document.getElementById('quizActionBtns').style.display = 'none';
-    document.getElementById('quizNextBtn').style.display = 'inline-flex';
+    const elBtns = document.getElementById('quizActionBtns');
+    const elNext = document.getElementById('quizNextBtn');
+    if (elBtns) elBtns.style.display = 'none';
+    if (elNext) elNext.style.display = 'inline-flex';
 
-    // Narrate Quiz Feedback
     if (!voiceAi.isMuted) {
       voiceAi.speak(isCorrect ? `Correct! ${q.explanation}` : `Watch out! ${q.explanation}`);
     }
@@ -878,6 +942,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showQuizSummary() {
     const container = document.getElementById('quizCardContainer');
+    if (!container) return;
     container.innerHTML = `
       <div class="quiz-summary-card">
         <h3>🏆 Quiz Completed!</h3>
@@ -912,12 +977,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showLoading('Analyzing Fraud Incident & Crafting Rescue Plan...');
         try {
-          const res = await fetch('/api/incident/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ problemText })
-          });
-          const data = await res.json();
+          const data = await safeApiCall('/api/incident/analyze', 'POST', { problemText });
           if (data.error) {
             alert(data.error);
             return;
@@ -925,6 +985,7 @@ document.addEventListener('DOMContentLoaded', () => {
           lastIncidentAnalysis = data;
           renderIncidentResults(data);
         } catch (err) {
+          console.error(err);
           alert('Failed to analyze problem. Please try again.');
         } finally {
           hideLoading();
@@ -939,7 +1000,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!lastIncidentAnalysis) return;
         switchTab('recovery');
 
-        // Pre-fill values
         if (lastIncidentAnalysis.detectedAmount && lastIncidentAnalysis.detectedAmount !== 'Undetermined / Not specified') {
           const amtInput = document.getElementById('compAmountLost');
           if (amtInput) amtInput.value = lastIncidentAnalysis.detectedAmount.replace(/[^0-9,]/g, '');
@@ -956,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const storyInput = document.getElementById('compIncidentStory');
-        const rawStory = document.getElementById('incidentStoryInput').value;
+        const rawStory = document.getElementById('incidentStoryInput') ? document.getElementById('incidentStoryInput').value : '';
         if (storyInput && rawStory) {
           storyInput.value = rawStory;
         }
@@ -972,16 +1032,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     area.style.display = 'block';
 
-    document.getElementById('incDetectedCategory').textContent = data.detectedCategory || 'Cyber Fraud Incident';
-    document.getElementById('incDetectedLoss').textContent = data.hasFinancialLoss
-      ? (data.detectedAmount ? `Rs. ${data.detectedAmount}` : 'Financial Transfer Indicated')
-      : 'No Immediate Financial Loss';
+    const elCat = document.getElementById('incDetectedCategory');
+    const elLoss = document.getElementById('incDetectedLoss');
+    const elProb = document.getElementById('incOverallProb');
+
+    if (elCat) elCat.textContent = data.detectedCategory || 'Cyber Fraud Incident';
+    if (elLoss) {
+      elLoss.textContent = data.hasFinancialLoss
+        ? (data.detectedAmount ? `Rs. ${data.detectedAmount}` : 'Financial Transfer Indicated')
+        : 'No Immediate Financial Loss';
+    }
 
     const cp = data.componentProbabilities || {};
     const overallProb = cp.overallScamProbability || 95.0;
-    document.getElementById('incOverallProb').textContent = `${overallProb}%`;
+    if (elProb) elProb.textContent = `${overallProb}%`;
 
-    // Bars
+    // Probability Bars
     setProbBar('probFinancial', 'fillFinancial', cp.financialLossProbability || 90);
     setProbBar('probIdentity', 'fillIdentity', cp.identityTheftProbability || 85);
     setProbBar('probDevice', 'fillDevice', cp.deviceCompromiseProbability || 60);
@@ -993,36 +1059,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const suspects = data.suspectsFound || {};
     const allSuspects = [...(suspects.phones || []), ...(suspects.upiIds || []), ...(suspects.links || [])];
 
-    if (allSuspects.length > 0) {
-      suspectsBox.style.display = 'block';
-      tagsBox.innerHTML = '';
-      allSuspects.forEach(s => {
-        const pill = document.createElement('span');
-        pill.className = 'suspect-tag-pill';
-        pill.textContent = s;
-        tagsBox.appendChild(pill);
-      });
-    } else {
-      suspectsBox.style.display = 'none';
+    if (suspectsBox && tagsBox) {
+      if (allSuspects.length > 0) {
+        suspectsBox.style.display = 'block';
+        tagsBox.innerHTML = '';
+        allSuspects.forEach(s => {
+          const pill = document.createElement('span');
+          pill.className = 'suspect-tag-pill';
+          pill.textContent = s;
+          tagsBox.appendChild(pill);
+        });
+      } else {
+        suspectsBox.style.display = 'none';
+      }
     }
 
     // Recovery Tutorials Timeline
     const timeline = document.getElementById('incRecoveryTimeline');
-    timeline.innerHTML = '';
-    (data.recoveryRoadmap || []).forEach(step => {
-      const card = document.createElement('div');
-      card.className = `timeline-step-card ${step.severity === 'CRITICAL' ? 'severity-critical' : ''}`;
-      card.innerHTML = `
-        <div class="timeline-step-title-row">
-          <span class="timeline-step-title">${step.icon || '🛡️'} Step ${step.stepNumber}: ${step.title}</span>
-          <span class="preset-badge ${step.severity === 'CRITICAL' ? 'badge-phone' : 'badge-whatsapp'}">${step.severity}</span>
-        </div>
-        <ul class="timeline-step-instructions">
-          ${step.instructions.map(inst => `<li>${inst}</li>`).join('')}
-        </ul>
-      `;
-      timeline.appendChild(card);
-    });
+    if (timeline) {
+      timeline.innerHTML = '';
+      (data.recoveryRoadmap || []).forEach(step => {
+        const card = document.createElement('div');
+        card.className = `timeline-step-card ${step.severity === 'CRITICAL' ? 'severity-critical' : ''}`;
+        card.innerHTML = `
+          <div class="timeline-step-title-row">
+            <span class="timeline-step-title">${step.icon || '🛡️'} Step ${step.stepNumber}: ${step.title}</span>
+            <span class="preset-badge ${step.severity === 'CRITICAL' ? 'badge-phone' : 'badge-whatsapp'}">${step.severity}</span>
+          </div>
+          <ul class="timeline-step-instructions">
+            ${step.instructions.map(inst => `<li>${inst}</li>`).join('')}
+          </ul>
+        `;
+        timeline.appendChild(card);
+      });
+    }
 
     area.scrollIntoView({ behavior: 'smooth' });
 
@@ -1035,8 +1105,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function setProbBar(numId, fillId, val) {
     const numEl = document.getElementById(numId);
     const fillEl = document.getElementById(fillId);
-    if (numEl) numEl.textContent = `${val.toFixed(1)}%`;
-    if (fillEl) fillEl.style.width = `${val}%`;
+    const numVal = parseFloat(val) || 0;
+    if (numEl) numEl.textContent = `${numVal.toFixed(1)}%`;
+    if (fillEl) fillEl.style.width = `${numVal}%`;
   }
 
   // --- Complaint Generator Form ---
@@ -1052,35 +1123,31 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
 
         const payload = {
-          victimName: document.getElementById('compVictimName').value.trim(),
-          victimPhone: document.getElementById('compVictimPhone').value.trim(),
-          victimEmail: document.getElementById('compVictimEmail').value.trim(),
-          victimAddress: document.getElementById('compVictimAddress').value.trim(),
-          bankName: document.getElementById('compBankName').value.trim(),
-          accountNumberMasked: document.getElementById('compAccountMasked').value.trim(),
-          amountLost: document.getElementById('compAmountLost').value.trim(),
-          utrNumber: document.getElementById('compUtrNumber').value.trim(),
-          scammerPhone: document.getElementById('compScammerPhone').value.trim(),
-          scammerUpiOrAccount: document.getElementById('compScammerUpi').value.trim(),
-          incidentStory: document.getElementById('compIncidentStory').value.trim()
+          victimName: document.getElementById('compVictimName') ? document.getElementById('compVictimName').value.trim() : '',
+          victimPhone: document.getElementById('compVictimPhone') ? document.getElementById('compVictimPhone').value.trim() : '',
+          victimEmail: document.getElementById('compVictimEmail') ? document.getElementById('compVictimEmail').value.trim() : '',
+          victimAddress: document.getElementById('compVictimAddress') ? document.getElementById('compVictimAddress').value.trim() : '',
+          bankName: document.getElementById('compBankName') ? document.getElementById('compBankName').value.trim() : '',
+          accountNumberMasked: document.getElementById('compAccountMasked') ? document.getElementById('compAccountMasked').value.trim() : '',
+          amountLost: document.getElementById('compAmountLost') ? document.getElementById('compAmountLost').value.trim() : '',
+          utrNumber: document.getElementById('compUtrNumber') ? document.getElementById('compUtrNumber').value.trim() : '',
+          scammerPhone: document.getElementById('compScammerPhone') ? document.getElementById('compScammerPhone').value.trim() : '',
+          scammerUpiOrAccount: document.getElementById('compScammerUpi') ? document.getElementById('compScammerUpi').value.trim() : '',
+          incidentStory: document.getElementById('compIncidentStory') ? document.getElementById('compIncidentStory').value.trim() : ''
         };
 
         showLoading('Drafting Formal Legal Complaint Letter...');
         try {
-          const res = await fetch('/api/complaint/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const data = await res.json();
-          if (data.complaintText) {
+          const data = await safeApiCall('/api/complaint/generate', 'POST', payload);
+          if (data && data.complaintText && outputPre && outputCard) {
             outputPre.textContent = data.complaintText;
             outputCard.style.display = 'block';
 
-            // Configure Email Button with pre-filled mailto
-            const mailtoSubject = encodeURIComponent(`URGENT: Financial Cyber Fraud Incident Report - Ref ${data.refId}`);
-            const mailtoBody = encodeURIComponent(data.complaintText);
-            btnEmail.href = `mailto:cybercrime-incident@mha.gov.in?subject=${mailtoSubject}&body=${mailtoBody}`;
+            if (btnEmail) {
+              const mailtoSubject = encodeURIComponent(`URGENT: Financial Cyber Fraud Incident Report - Ref ${data.refId}`);
+              const mailtoBody = encodeURIComponent(data.complaintText);
+              btnEmail.href = `mailto:cybercrime-incident@mha.gov.in?subject=${mailtoSubject}&body=${mailtoBody}`;
+            }
 
             outputCard.scrollIntoView({ behavior: 'smooth' });
 
@@ -1089,6 +1156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
         } catch (err) {
+          console.error(err);
           alert('Failed to generate complaint letter. Please try again.');
         } finally {
           hideLoading();
@@ -1113,16 +1181,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!container) return;
 
     try {
-      const res = await fetch('/api/helplines');
-      const data = await res.json();
-      if (!data.success || !data.helplines) return;
+      let helplines = (window.ClientEngine && window.ClientEngine.NATIONAL_HELPLINES) || [];
+      if (!helplines.length) {
+        const data = await safeApiCall('/api/helplines');
+        if (data && data.helplines) helplines = data.helplines;
+      }
+      if (!helplines || !helplines.length) return;
 
       container.innerHTML = '';
-      data.helplines.forEach(h => {
+      helplines.forEach(h => {
         const card = document.createElement('div');
         card.className = 'helpline-card';
 
-        // Pre-filled mailto link
         const mailSubject = encodeURIComponent(h.emailTemplate ? h.emailTemplate.subject : 'Cyber Crime Report');
         const mailBody = encodeURIComponent(h.emailTemplate ? h.emailTemplate.body : 'Incident details...');
         const mailtoHref = `mailto:${h.email}?subject=${mailSubject}&body=${mailBody}`;
@@ -1164,9 +1234,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Live Community Stats ---
   async function loadLiveStats() {
     try {
-      const res = await fetch('/api/stats');
-      const data = await res.json();
-      if (!data.success) return;
+      let data = null;
+      if (window.ClientEngine && typeof window.ClientEngine.getStats === 'function') {
+        data = window.ClientEngine.getStats();
+      } else {
+        data = await safeApiCall('/api/stats');
+      }
+      if (!data || !data.success) return;
 
       const blockedCounter = document.getElementById('statThreatsBlocked');
       const campaignsCounter = document.getElementById('statActiveCampaigns');
@@ -1181,7 +1255,7 @@ document.addEventListener('DOMContentLoaded', () => {
           item.className = 'ticker-item';
           item.innerHTML = `
             <span class="ticker-time">${rep.reportedAt}</span>
-            <span class="ticker-badge badge-${rep.type.toLowerCase()}">${rep.type}</span>
+            <span class="ticker-badge badge-${(rep.type || '').toLowerCase()}">${rep.type}</span>
             <span class="ticker-target">${rep.target}</span>
             <span class="ticker-cat">${rep.category}</span>
           `;
@@ -1208,7 +1282,8 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       document.body.appendChild(loader);
     } else {
-      document.getElementById('loaderMsg').textContent = msg;
+      const msgEl = document.getElementById('loaderMsg');
+      if (msgEl) msgEl.textContent = msg;
       loader.style.display = 'flex';
     }
   }
